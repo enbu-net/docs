@@ -11,8 +11,8 @@ interface Props {
 
 const { locale } = Astro.props;
 const isJapanese = locale === 'ja';
-const releaseUrl = 'https://github.com/yashikota/enbu/releases/latest';
-const releaseApiUrl = 'https://api.github.com/repos/yashikota/enbu/releases/latest';
+const releaseUrl = 'https://github.com/enbu-net/enbu/releases/latest';
+const releaseApiUrl = 'https://api.github.com/repos/enbu-net/enbu/releases/latest';
 const repositoryUrl = 'https://github.com/yashikota/enbu';
 const licenseUrl = 'https://github.com/yashikota/enbu/blob/main/LICENSE';
 
@@ -25,12 +25,12 @@ const downloads = [
 	{
 		id: 'windows-amd64',
 		name: 'Windows',
-		detail: 'x64 · EXE',
+		detail: 'x64 · ZIP',
 	},
 	{
 		id: 'windows-arm64',
 		name: 'Windows',
-		detail: 'Arm64 · EXE',
+		detail: 'Arm64 · ZIP',
 	},
 	{
 		id: 'linux-amd64',
@@ -320,8 +320,8 @@ const currentLanguage = languages.find((language) => language.locale === locale)
 			const uaData = (navigator as Navigator & { userAgentData?: NavigatorUAData }).userAgentData;
 			const assetPatterns: Record<string, RegExp> = {
 				macos: /_darwin_arm64\.dmg$/i,
-				'windows-amd64': /_windows_amd64\.exe$/i,
-				'windows-arm64': /_windows_arm64\.exe$/i,
+				'windows-amd64': /_windows_amd64\.zip$/i,
+				'windows-arm64': /_windows_arm64\.zip$/i,
 				'linux-amd64': /_linux_amd64\.tar\.gz$/i,
 				'linux-arm64': /_linux_arm64\.tar\.gz$/i,
 			};
@@ -422,7 +422,7 @@ const currentLanguage = languages.find((language) => language.locale === locale)
 				} else if (platform.includes('win')) {
 					targetId = isArm ? 'windows-arm64' : 'windows-amd64';
 					targetLabel = button.dataset.labelWindows || '';
-					targetDetail = `${isArm ? 'Arm64' : 'x64'} · EXE`;
+					targetDetail = `${isArm ? 'Arm64' : 'x64'} · ZIP`;
 				} else if (platform.includes('linux')) {
 					targetId = isArm ? 'linux-arm64' : 'linux-amd64';
 					targetLabel = button.dataset.labelLinux || '';
