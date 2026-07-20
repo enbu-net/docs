@@ -23,15 +23,44 @@ if (-not $Version) {
     exit 1
 }
 
-# Download and extract
+# Download zip and checksums
 $Zip = "enbu_${Version}_windows_amd64.zip"
-$Url = "https://github.com/$Repo/releases/download/v$Version/$Zip"
+$BaseUrl = "https://github.com/$Repo/releases/download/v$Version"
 $TmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
 New-Item -ItemType Directory -Path $TmpDir | Out-Null
 
 try {
     Write-Host "Downloading enbu v$Version (windows/amd64)..."
-    Invoke-WebRequest -Uri $Url -OutFile (Join-Path $TmpDir $Zip) -UseBasicParsing
+    Invoke-WebRequest -Uri "$BaseUrl/$Zip" -OutFile (Join-Path $TmpDir $Zip) -UseBasicParsing
+    Invoke-WebRequest -Uri "$BaseUrl/checksums.txt" -OutFile (Join-Path $TmpDir "checksums.txt") -UseBasicParsing
+
+    # Verify checksum
+    Write-Host "Verifying checksum..."
+    $ChecksumsContent = Get-Content (Join-Path $TmpDir "checksums.txt")
+    $ExpectedLine = $ChecksumsContent | Where-Object { $_ -match " $Zip$" }
+    if (-not $ExpectedLine) {
+        throw "Checksum not found for $Zip"
+    }
+    $Expected = ($ExpectedLine -split '\s+')[0]
+    $Actual = (Get-FileHash (Join-Path $TmpDir $Zip) -Algorithm SHA256).Hash.ToLower()
+    if ($Actual -ne $Expected) {
+        throw "Checksum mismatch`n  expected: $Expected`n  actual:   $Actual"
+    }
+    Write-Host "Checksum OK"
+
+    # Verify sigstore signature (optional, requires cosign)
+    if (Get-Command cosign -ErrorAction SilentlyContinue) {
+        Write-Host "Verifying sigstore signature..."
+        Invoke-WebRequest -Uri "$BaseUrl/checksums.txt.sigstore.json" -OutFile (Join-Path $TmpDir "checksums.txt.sigstore.json") -UseBasicParsing
+        cosign verify-blob `
+            --bundle (Join-Path $TmpDir "checksums.txt.sigstore.json") `
+            --certificate-identity-regexp "https://github.com/enbu-net/enbu/" `
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" `
+            (Join-Path $TmpDir "checksums.txt")
+        Write-Host "Sigstore verification OK"
+    }
+
+    # Extract and install
     Expand-Archive -Path (Join-Path $TmpDir $Zip) -DestinationPath $TmpDir
     Copy-Item (Join-Path $TmpDir $Binary) (Join-Path $InstallDir $Binary) -Force
 } finally {

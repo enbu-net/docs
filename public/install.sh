@@ -41,14 +41,54 @@ case "${ARCH}" in
     *) ARCH="amd64" ;;
 esac
 
-# Download and extract
+# Download tarball and checksums
 TARBALL="enbu_${VERSION}_${OS}_${ARCH}.tar.gz"
-URL="https://github.com/${REPO}/releases/download/v${VERSION}/${TARBALL}"
+BASE_URL="https://github.com/${REPO}/releases/download/v${VERSION}"
 TMP=$(mktemp -d)
 trap 'rm -rf "${TMP}"' EXIT
 
 echo "Downloading enbu v${VERSION} (${OS}/${ARCH})..."
-curl -fsSL "${URL}" -o "${TMP}/${TARBALL}"
+curl -fsSL "${BASE_URL}/${TARBALL}" -o "${TMP}/${TARBALL}"
+curl -fsSL "${BASE_URL}/checksums.txt" -o "${TMP}/checksums.txt"
+
+# Verify checksum
+echo "Verifying checksum..."
+EXPECTED=$(grep " ${TARBALL}$" "${TMP}/checksums.txt" | awk '{print $1}')
+if [ -z "${EXPECTED}" ]; then
+    echo "error: checksum not found for ${TARBALL}" >&2
+    exit 1
+fi
+
+if command -v sha256sum >/dev/null 2>&1; then
+    ACTUAL=$(sha256sum "${TMP}/${TARBALL}" | awk '{print $1}')
+elif command -v shasum >/dev/null 2>&1; then
+    ACTUAL=$(shasum -a 256 "${TMP}/${TARBALL}" | awk '{print $1}')
+else
+    echo "error: sha256sum or shasum not found" >&2
+    exit 1
+fi
+
+if [ "${ACTUAL}" != "${EXPECTED}" ]; then
+    echo "error: checksum mismatch" >&2
+    echo "  expected: ${EXPECTED}" >&2
+    echo "  actual:   ${ACTUAL}" >&2
+    exit 1
+fi
+echo "Checksum OK"
+
+# Verify sigstore signature (optional, requires cosign)
+if command -v cosign >/dev/null 2>&1; then
+    echo "Verifying sigstore signature..."
+    curl -fsSL "${BASE_URL}/checksums.txt.sigstore.json" -o "${TMP}/checksums.txt.sigstore.json"
+    cosign verify-blob \
+        --bundle "${TMP}/checksums.txt.sigstore.json" \
+        --certificate-identity-regexp "https://github.com/enbu-net/enbu/" \
+        --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+        "${TMP}/checksums.txt"
+    echo "Sigstore verification OK"
+fi
+
+# Extract and install
 tar -xzf "${TMP}/${TARBALL}" -C "${TMP}"
 cp "${TMP}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
 chmod +x "${INSTALL_DIR}/${BINARY}"
