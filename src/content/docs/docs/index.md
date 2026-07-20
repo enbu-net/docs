@@ -12,7 +12,21 @@ Download the installer for your platform from the [enbu website](/#download) or 
 
 ## Install the CLI
 
-```shell
+**macOS / Linux**
+
+```sh
+curl -fsSL https://enbu.net/install.sh | sh
+```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://enbu.net/install.ps1 | iex
+```
+
+Or install with Go:
+
+```sh
 go install github.com/yashikota/enbu@latest
 ```
 
