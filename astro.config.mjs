@@ -3,6 +3,7 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightLlmsTxt from "starlight-llms-txt";
 import starlightDotMd from "starlight-dot-md";
+import starlightCopyButton from "starlight-copy-button";
 
 // https://astro.build/config
 export default defineConfig({
@@ -17,7 +18,7 @@ export default defineConfig({
           items: [{ autogenerate: { directory: "docs" } }],
         },
       ],
-      plugins: [starlightLlmsTxt(), starlightDotMd()],
+      plugins: [starlightLlmsTxt(), starlightDotMd(), starlightCopyButton({ label: "Copy as MD" })],
     }),
   ],
 });
